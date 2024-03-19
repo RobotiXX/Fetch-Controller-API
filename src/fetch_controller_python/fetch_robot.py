@@ -30,7 +30,7 @@ class FetchRobot:
         self.__head_joints = {HEAD_JOINTS[i]: 0.0 for i in range(len(HEAD_JOINTS))}
         self.__joints = {ARM_AND_TORSO_JOINTS[i]: 0.0 for i in range(len(ARM_AND_TORSO_JOINTS))}
         self.__base_transform = self.__op.getTransformMatrix() # ones matrix
-        self.lookAt([[0.0 for _ in range(2)], [0.0 for _ in range(2)], [0.0 for _ in range(2)]])
+        # self.lookAt([[0.0 for _ in range(2)], [0.0 for _ in range(2)], [0.0 for _ in range(2)]])
         rospy.Subscriber(JOINT_STATES, JointState, self.__joint_states_callback, queue_size=1)
 
     def report_fetch_state(self):
@@ -209,5 +209,52 @@ class FetchRobot:
         # transform wrist roll to gripper
         wroll2gripper = self.__op.getTransformMatrix(rotation=(0, 0, 0), translation=WRISTROLL2GRIPPER)
         final_matrix = self.__op.combineTransform(wroll2gripper, final_matrix)
+
+        return final_matrix
+    
+
+    def getHeadCameraLocation(self):
+        '''
+        Add comment
+        '''
+        M = self.__getTransformationBase2Camera()
+        headcamera_location = self.__op.transform(self.__base_position, M)
+
+        return headcamera_location
+    
+    def convertHeadCamera2Base(self, headcamera_location):
+        '''
+        Add comment
+        '''
+        M = self.__getTransformationBase2Camera()
+        computed_base_location = self.__op.transform(headcamera_location, self.__op.getInverseMatrix(M))
+
+        return computed_base_location
+    
+    def __getTransformationBase2Camera(self):
+        '''
+        Add comment
+        '''
+        current_joints = self.get_joint_states()
+        current_heads = self.get_head_states()
+        final_matrix = self.__op.getTransformMatrix()
+
+        # transform from base to torso
+        base2torso_translation = self.__op.getTransformMatrix(rotation=(0,0,0), translation=BASE2TORSO)
+        torso_action = self.__op.getTransformMatrix(rotation=(0,0,0), translation=(0, 0, current_joints['torso_lift_joint']))
+        base2torso_matrix = self.__op.combineTransform(torso_action, base2torso_translation)
+        final_matrix = self.__op.combineTransform(base2torso_matrix, final_matrix)
+
+        # transform from torso to head pan
+        torso2headpan_matrix = self.__op.getTransformMatrix(rotation=(0,0,current_heads['head_pan_joint']), translation=TORSO2HEADPAN)
+        final_matrix = self.__op.combineTransform(torso2headpan_matrix, final_matrix)
+
+        # transform from head pan to head tilt
+        headpan2headtilt_matrix = self.__op.getTransformMatrix(rotation=(0, current_heads['head_tilt_joint'], 0), translation=HEADPAN2HEADTILT)
+        final_matrix = self.__op.combineTransform(headpan2headtilt_matrix, final_matrix)
+
+        # transform from head tilt to head camera
+        headtilt2headcam_matrix = self.__op.getTransformMatrix(rotation=(0, 0, 0), translation=HEADTILT2HEADCAM)
+        final_matrix = self.__op.combineTransform(headtilt2headcam_matrix, final_matrix)
 
         return final_matrix
