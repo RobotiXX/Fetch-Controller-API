@@ -1,7 +1,7 @@
 import rospy
 import sys, time, os
 sys.path.insert(1, os.path.abspath("."))
-from lib.params import ARM_AND_TORSO_JOINTS, INTRINSIC_PARAM_CAMERA
+from lib.params import *
 from lib.board_tracker import BoardTracker
 from lib.utils import MatrixOperation
 from src.fetch_controller_python.fetch_robot import FetchRobot
@@ -9,7 +9,8 @@ import cv2
 import apriltag
 import argparse
 import numpy as np
-
+import tf
+from geometry_msgs.msg import PoseWithCovarianceStamped, Pose
 
 def drawBoxes(results, image):
     for r in results:
@@ -49,6 +50,25 @@ def show_image(img):
     # closing all open windows 
     cv2.destroyAllWindows() 
 
+def posefromMatrix(matrix):
+    m = matrix[:,:3]
+
+    cur_matrix = m.reshape(3,4)
+    cur_matrix_homo = np.vstack((cur_matrix, np.array([0, 0, 0, 1]))) # to homogenous coordinates
+
+    q = tf.transformations.quaternion_from_matrix(cur_matrix_homo)
+
+    p = Pose()
+    p.position.x = matrix[0][3]
+    p.position.y = matrix[1][3]
+    p.position.z = matrix[2][3]
+    p.orientation.x = q[0]
+    p.orientation.y = q[1]
+    p.orientation.z = q[2]
+    p.orientation.w = q[3]
+
+    return p
+
 
 ################################3
 
@@ -59,50 +79,88 @@ robot = FetchRobot()
 
 rospy.sleep(5)
 
-
-img = cv2.imread("tests/test_frame.png") #("../bw_img.png")
-
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
-
-
-tracker = BoardTracker()
-
-# tracker = apriltag.Detector(apriltag.DetectorOptions(families="tag36h11"))
-
-r = tracker.detect(gray)
-
-# print(r)
-
-
-a = r[0]
-
-
-# print(a.homography)
-
-ps, _, _ = tracker.getTransformation(a) 
-
-print("\n========================== START ======================================\n")
-
-print("Here, base is [0, 0, 0], we will just multiply with odom2Base matrix to get coordinate in world frame.")
-
-print(f"\nDetected tag with ID:  {a.tag_id} \n")
-
-print(f"Homography matrix from AprilTag is: \n {ps} \n")
-
-
-camLoc = robot.getHeadCameraLocation()
-print(f"\nThe camera position in base frame should be: {camLoc}\n")
-
+bt = BoardTracker() 
 op = MatrixOperation()
 
-tagLoc2Base = op.transform(camLoc, op.getInverseMatrix(ps))
+
+for img_name in ["test_frame.png", "test_frame2.png"]:
+
+    img = cv2.imread("tests/" + img_name) #("../bw_img.png")
+
+    print("\n ************************************************************** \n")
+
+    r = bt.detect(img)
+    print(len(r))
 
 
-print(f"The tag position in base frame should be: {tagLoc2Base}\n")
+    pose_m, _, _ = bt.detectPose(r[0])
 
-print("\n========================== END =======================================\n")
+    M = robot.getTransformationBase2Camera()
 
-# drawBoxes(r, img)
+    pose_m_base = np.dot(M, pose_m)
+
+    identity = op.getTransformMatrix()
+
+    identity[:, 3:] = pose_m_base[:, 3:]
+
+    print(identity)
 
 
-# show_image(img)
+
+
+
+
+
+# print(posefromMatrix(pose_m_base))
+
+# print("\n++++++++++++++++++++++++++++++++++ \n ++++++++++++++++++++++++++++++++ \n")
+
+# img2 = cv2.imread("tests/test_frame2.png") #("../bw_img.png")
+
+# r2 = bt.detect(img2)
+# print(len(r2))
+
+# pose_m2, _, _ = bt.detectPose(r2[0])
+
+# pose_m2_base = np.dot(M, pose_m2)
+
+# # print(pose_m2)
+
+# print(posefromMatrix(pose_m2_base))
+
+
+# op = MatrixOperation()
+
+# tag_pose_m = op.getInverseMatrix(pose_m)
+
+# M = robot.getTransformationBase2Camera()
+
+# pose_in_base = np.dot(M, tag_pose_m)
+
+# print(pose_in_base)
+
+# print(f"position of tag is: {pose_in_base[0:3, 3]}")
+
+# # object Radius 0.04 and the height 0.17 
+
+# # from gripper link to grasppable area is 6 + 6
+
+# target_end_effector_position = pose_in_base[0:3, 3] - [0.06, 0, 0.08] # in base frame
+
+# print(f"Target end effector is {target_end_effector_position}")
+
+# target_end_effector_transform = op.getTransformMatrix(translation=target_end_effector_position)
+
+# print(target_end_effector_transform) # in base frame
+
+# new_base = np.dot(BASE_DEST_TRANSFORM, target_end_effector_transform)
+
+# print(new_base)
+
+
+# [[ 9.99998162e-01  1.91736032e-03  1.72762367e-06  9.23109441e-01]
+#  [-1.91736104e-03  9.99997501e-01  1.14973513e-03 -1.70733538e-03]
+#  [ 4.76837158e-07 -1.14973632e-03  9.99999339e-01  8.29872811e-01]
+#  [ 0.00000000e+00  0.00000000e+00  0.00000000e+00  1.00000000e+00]]
+
+# now, get transformation of the reaching position to base frame

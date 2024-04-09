@@ -1,4 +1,8 @@
 import numpy as np
+import geometry_msgs
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+# import rospy
 
 ### JOINT STATES
 JOINT_STATES = "joint_states"
@@ -70,21 +74,21 @@ At [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] joint pos
 
 # ODOM2BASE = []
 
-BASE2TORSO = [-0.087, 0.000, 0.410] 
+BASE2TORSO = [-0.086875, 0.000, 0.37743] 
 
 # TORSO TO HEAD CAMEAR
 
-TORSO2HEADPAN = [0.053, 0.000, 0.603]
+TORSO2HEADPAN = [0.053125, 0.000, 0.603001417713939]
 
-HEADPAN2HEADTILT = [0.143, 0.000, 0.058]
+HEADPAN2HEADTILT = [0.14253, 0.000, 0.057999]
 
 HEADTILT2HEADCAM = [0.055, 0.000, 0.022]
 
 # TORSO TO ARM
 
-TORSO2SHOULDERPAN = [0.120, 0.000, 0.349]
+TORSO2SHOULDERPAN = [0.119525, 0.000, 0.34858]
 
-SHOULDERPAN2SHOULDERLIFT = [0.117, 0.000, 0.060]
+SHOULDERPAN2SHOULDERLIFT = [0.117, 0.000, 0.0599999999999999]
 
 SHOULDERLIFT2UPPERARM = [0.219, 0.000, 0.000]
 
@@ -92,8 +96,51 @@ UPPERARM2ELBOW = [0.133, 0.000, 0.000]
 
 ELBOW2FOREARM = [0.197, 0.000, 0.000]
 
-FOREARM2WRISTFLEX = [0.124, 0.000, 0.000]
+FOREARM2WRISTFLEX = [0.1245, 0.000, 0.000]
 
-WRISTFLEX2WRISTROLL = [0.139, 0.000, 0.000]
+WRISTFLEX2WRISTROLL = [0.1385, 0.000, 0.000]
 
-WRISTROLL2GRIPPER = [0.166, 0.000, 0.000]
+WRISTROLL2GRIPPER = [0.16645, 0.000, 0.000]
+
+# MATRIX TO MAP END EFFECTOR TO NEW BASE POSITION
+
+BASE_DEST_TRANSFORM = np.array([[ 9.99999338e-01, -2.56295201e-05, -1.15025930e-03,  9.23685022e-01],
+                                [ 2.63510869e-05,  9.99999803e-01,  6.27297245e-04,  1.17883454e-04],
+                                [ 1.15024299e-03, -6.27327141e-04,  9.99999142e-01,  8.30216081e-01],
+                                [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00]])
+
+
+
+
+# INITIAL POSE TO SUGGEST LOCALIZATION
+INITIAL_POSE_SUGGESTION = PoseWithCovarianceStamped()
+INITIAL_POSE_SUGGESTION.header.frame_id = "map"
+INITIAL_POSE_SUGGESTION.pose.pose.position.x=-4.613 
+INITIAL_POSE_SUGGESTION.pose.pose.position.y=-0.292
+INITIAL_POSE_SUGGESTION.pose.pose.position.z=0
+INITIAL_POSE_SUGGESTION.pose.covariance=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+INITIAL_POSE_SUGGESTION.pose.pose.orientation.z=0.300339
+INITIAL_POSE_SUGGESTION.pose.pose.orientation.w=0.953832
+
+# WAYPOINT A (IN FRONT OF MAIN TABLE)
+# WAYPOINT_A_POSE =  MoveBaseGoal()
+# WAYPOINT_A_POSE.target_pose.header.frame_id = "map"
+# WAYPOINT_A_POSE.target_pose.pose.position.x = -5.5596
+# WAYPOINT_A_POSE.target_pose.pose.position.y = 1.26814
+# WAYPOINT_A_POSE.target_pose.pose.orientation.z = 0.254977
+# WAYPOINT_A_POSE.target_pose.pose.orientation.w = 0.966947
+
+WAYPOINT_A_POSE =  MoveBaseGoal()
+WAYPOINT_A_POSE.target_pose.header.frame_id = "map"
+WAYPOINT_A_POSE.target_pose.pose.position.x = -5.2988 #-4.0869 
+WAYPOINT_A_POSE.target_pose.pose.position.y =  1.20969 #1.57562262
+WAYPOINT_A_POSE.target_pose.pose.orientation.z = 0.346166 #0.53084
+WAYPOINT_A_POSE.target_pose.pose.orientation.w = 0.938173 #0.66385 
+
+# def kick_start_localization():
+#     pub = rospy.Publisher('/initialpose', geometry_msgs.msg.PoseWithCovarianceStamped, queue_size=10)
+#     rospy.init_node('talker', anonymous=True)
+#     rate = rospy.Rate(5)
+#     rate.sleep()
+#     rospy.loginfo(INITIAL_POSE_SUGGESTION)
+#     pub.publish(INITIAL_POSE_SUGGESTION)

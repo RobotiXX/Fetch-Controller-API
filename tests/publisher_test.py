@@ -6,6 +6,10 @@ from std_msgs.msg import Float32MultiArray
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from std_msgs.msg import Float32MultiArray, Float64MultiArray
+from tf import TransformListener
+import tf
+from geometry_msgs.msg import *
+from lib.params import BASE_DEST_TRANSFORM, VISION_IMAGE_TOPIC
 
 if __name__ == '__main__':
     rospy.init_node('head_movement_tracking')
@@ -41,12 +45,31 @@ if __name__ == '__main__':
 
     #     pub.publish(my_msg)
 
-    my_msg = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
 
-    print(my_msg)
-    print(my_msg.shape)
+    m = BASE_DEST_TRANSFORM[:,:3]
 
-    flatted_msg =  my_msg.reshape(-1)
-    print(flatted_msg)
+    cur_matrix = m.reshape(3,4)
+    cur_matrix_homo = np.vstack((cur_matrix, np.array([0, 0, 0, 1]))) # to homogenous coordinates
+
+    q = tf.transformations.quaternion_from_matrix(cur_matrix_homo)
+
+    p = Pose()
+    p.position.x = BASE_DEST_TRANSFORM[0][3]
+    p.position.y = BASE_DEST_TRANSFORM[1][3]
+    p.position.z = BASE_DEST_TRANSFORM[2][3]
+    p.orientation.x = q[0]
+    p.orientation.y = q[1]
+    p.orientation.z = q[2]
+    p.orientation.w = q[3]
+
+    print(BASE_DEST_TRANSFORM)
+
+
+
+
     print()
-    print(flatted_msg.reshape(4, 4))
+
+    print(p)
+
+
+    

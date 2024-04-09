@@ -1,6 +1,7 @@
 import apriltag
 from lib.params import INTRINSIC_PARAM_CAMERA, APRIL_TAG_SIZE
 import numpy as np
+import cv2
 
 class BoardTracker:
     '''
@@ -10,7 +11,8 @@ class BoardTracker:
         self.detector = apriltag.Detector(apriltag.DetectorOptions(families=family))
 
     def detect(self, img):
-        results = self.detector.detect(img)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) 
+        results = self.detector.detect(gray)
 
         return results
 
@@ -48,5 +50,4 @@ class BoardTracker:
 
     
     def detectPose(self, detection):
-        pass
-        # self.detector.detect_tags()
+        return self.detector.detection_pose(detection, camera_params=INTRINSIC_PARAM_CAMERA, tag_size=APRIL_TAG_SIZE)
